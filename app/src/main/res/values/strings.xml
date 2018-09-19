@@ -1,3 +1,11 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">P3 - Mr Mood</string>
+    <string name="add_comment">Ajouter un commentaire</string>
+    <string name="comment_description_history_item_iv">Un commentaire est disponible</string>
+    <string name="today">Aujourd\'hui</string>
+    <string name="yesterday">Hier</string>
+    <string name="the_day_before_yesterday">Avant-hier</string>
+    <string name="a_week_ago">Il y a une semaine</string>
+    <string name="x_days_before" tools:ignore="PluralsCandidate">Il y a %d jours</string>
+    <string name="hind_dialog_comment">Un commentaire sur ta journée ?</string>
 </resources>
