@@ -13,6 +13,10 @@ class HistoryBusinessService {
     String getHowLongAgo(Context context, @NonNull ZonedDateTime date) {
         String result;
         
+        // .between() function is quite stupid, it cares about "24h" intervals between Instants instead of whole days.
+        // Example : between Tuesday 10 am and Wednesday 8 pm, there's only "1 day" of difference, but since the
+        // delta in hours is more than 24 hours, it would return "2 days".
+        // DateUtils.getLastInstantOfToday() fixes this.
         int daysBetween = (int) ChronoUnit.DAYS.between(date, DateUtils.getLastInstantOfToday());
         
         switch (daysBetween) {

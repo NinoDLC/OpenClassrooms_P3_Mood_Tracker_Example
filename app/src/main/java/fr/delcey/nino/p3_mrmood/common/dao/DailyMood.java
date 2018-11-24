@@ -29,7 +29,7 @@ public class DailyMood extends RealmObject {
         return Mood.valueOf(mood);
     }
     
-    public void setMood(@NonNull Mood mood) {
+    void setMood(@NonNull Mood mood) {
         this.mood = mood.name();
     }
     
@@ -38,7 +38,7 @@ public class DailyMood extends RealmObject {
         return ZonedDateTime.parse(date);
     }
     
-    public void setDate(@NonNull ZonedDateTime zonedDateTime) {
+    void setDate(@NonNull ZonedDateTime zonedDateTime) {
         key = DateUtils.getDateAsNumber(zonedDateTime);
         date = zonedDateTime.toString();
     }
@@ -48,10 +48,11 @@ public class DailyMood extends RealmObject {
         return comment;
     }
     
-    public void setComment(@Nullable String comment) {
+    void setComment(@Nullable String comment) {
         this.comment = comment;
     }
     
+    @NonNull
     @Override
     public String toString() {
         return "DailyMood{" +

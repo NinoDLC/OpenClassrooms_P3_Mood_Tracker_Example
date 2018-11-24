@@ -12,6 +12,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import fr.delcey.nino.p3_mrmood.R;
 import fr.delcey.nino.p3_mrmood.common.dao.DailyMood;
+import java.lang.ref.WeakReference;
 import java.util.List;
 
 /**
@@ -21,12 +22,15 @@ import java.util.List;
  */
 class HistoryAdapter extends Adapter<HistoryAdapter.HistoryViewHolder> {
     
+    @NonNull
     private final HistoryBusinessService mHistoryBusinessService = new HistoryBusinessService();
     
+    @NonNull
     private final List<DailyMood> mData;
+    @NonNull
     private final Callback mCallback;
     
-    HistoryAdapter(List<DailyMood> moods, Callback callback) {
+    HistoryAdapter(@NonNull List<DailyMood> moods, @NonNull Callback callback) {
         mData = moods;
         mCallback = callback;
     }
@@ -35,37 +39,38 @@ class HistoryAdapter extends Adapter<HistoryAdapter.HistoryViewHolder> {
     @Override
     public HistoryViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         return new HistoryViewHolder(LayoutInflater.from(parent.getContext())
-                                                   .inflate(R.layout.history_recyclerview_item, parent, false));
+                                                   .inflate(R.layout.history_recyclerview_item, parent, false),
+                                     this);
     }
     
     @Override
     public void onBindViewHolder(@NonNull HistoryViewHolder viewHolder, int position) {
         DailyMood mood = mData.get(position);
-        assert mood != null;
-        
         viewHolder.bind(mood);
     }
     
     @Override
     public int getItemCount() {
-        return mData == null ? 0 : mData.size();
+        return mData.size();
     }
     
     private void onItemClicked(int adapterPosition) {
         DailyMood mood = mData.get(adapterPosition);
-        assert mood != null;
-        
         mCallback.onHistoryMoodClicked(mood);
     }
     
-    class HistoryViewHolder extends RecyclerView.ViewHolder implements OnClickListener {
+    static class HistoryViewHolder extends RecyclerView.ViewHolder implements OnClickListener {
+        
+        private final WeakReference<HistoryAdapter> mAdapter;
         
         private final TextView textViewHoldLongAgo;
         private final ImageView imageViewIconCommentAvailable;
         private final View background;
         
-        HistoryViewHolder(@NonNull View itemView) {
+        HistoryViewHolder(@NonNull View itemView, HistoryAdapter adapter) {
             super(itemView);
+            
+            mAdapter = new WeakReference<>(adapter);
             
             textViewHoldLongAgo = itemView.findViewById(R.id.history_item_tv_how_long_ago);
             imageViewIconCommentAvailable = itemView.findViewById(R.id.history_item_iv_comment_available);
@@ -73,7 +78,12 @@ class HistoryAdapter extends Adapter<HistoryAdapter.HistoryViewHolder> {
         }
         
         void bind(@NonNull DailyMood mood) {
-            String howLongAgo = mHistoryBusinessService.getHowLongAgo(itemView.getContext(), mood.getDate());
+            if (mAdapter.get() == null) {
+                return;
+            }
+            String howLongAgo = mAdapter.get()
+                                        .getHistoryBusinessService()
+                                        .getHowLongAgo(itemView.getContext(), mood.getDate());
             textViewHoldLongAgo.setText(howLongAgo);
             
             imageViewIconCommentAvailable.setVisibility(mood.getComment() == null ? View.GONE : View.VISIBLE);
@@ -86,8 +96,15 @@ class HistoryAdapter extends Adapter<HistoryAdapter.HistoryViewHolder> {
         
         @Override
         public void onClick(View v) {
-            onItemClicked(getAdapterPosition());
+            if (mAdapter.get() != null) {
+                mAdapter.get().onItemClicked(getAdapterPosition());
+            }
         }
+    }
+    
+    @NonNull
+    private HistoryBusinessService getHistoryBusinessService() {
+        return mHistoryBusinessService;
     }
     
     public interface Callback {

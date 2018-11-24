@@ -90,28 +90,15 @@ public class MoodActivity extends AppCompatActivity {
             
             if (currentMood == null) {
                 // Just initialize recyclerview to "neutral" mood the first time the activity is launched
-                initialPosition = (mMoodCount + 1) / 2;
+                initialPosition = getRecyclerViewDefaultInitialPosition();
             } else {
                 initialPosition = currentMood.getMood().ordinal();
             }
         }
         
-        // Restore the good color of the RecyclerView
-        setInitialPosition(initialPosition);
-        
         addScrollListenerToRecyclerView();
         
-        computeRecyclerviewHeightAndInitialScroll();
-    }
-    
-    private void setInitialPosition(int initialPosition) {
-        mInitialPosition = initialPosition;
-        
-        mRecycleview.scrollToPosition(initialPosition);
-    }
-    
-    private void onAddCommentButtonClicked() {
-        new MoodCommentDialog().show(getSupportFragmentManager(), null);
+        initRecyclerViewPosition(initialPosition);
     }
     
     @Override
@@ -121,9 +108,7 @@ public class MoodActivity extends AppCompatActivity {
         int lastTimeUsed = new LastTimeUsedSharedPreferences(this).getLastTimeUsed();
         
         if (DateUtils.getDateAsNumber(DateUtils.getNow()) != lastTimeUsed) {
-            setInitialPosition((mMoodCount + 1) / 2);
-            
-            computeRecyclerviewHeightAndInitialScroll();
+            initRecyclerViewPosition(getRecyclerViewDefaultInitialPosition());
         }
     }
     
@@ -152,6 +137,10 @@ public class MoodActivity extends AppCompatActivity {
                 outState.putInt(SAVE_STATE_SELECTED_MOOD, actualPosition);
             }
         }
+    }
+    
+    private void onAddCommentButtonClicked() {
+        new MoodCommentDialog().show(getSupportFragmentManager(), null);
     }
     
     private void addScrollListenerToRecyclerView() {
@@ -187,6 +176,23 @@ public class MoodActivity extends AppCompatActivity {
             
             DailyMoodDao.getInstance().setTodayMood(currentMood);
         }
+    }
+    
+    private int getRecyclerViewDefaultInitialPosition() {
+        return (mMoodCount + 1) / 2;
+    }
+    
+    private void initRecyclerViewPosition(int initialPosition) {
+        // Restore the good color of the RecyclerView
+        setRecyclerViewInitialPosition(initialPosition);
+        
+        computeRecyclerviewHeightAndInitialScroll();
+    }
+    
+    private void setRecyclerViewInitialPosition(int initialPosition) {
+        mInitialPosition = initialPosition;
+        
+        mRecycleview.scrollToPosition(initialPosition);
     }
     
     private void computeRecyclerviewHeightAndInitialScroll() {
