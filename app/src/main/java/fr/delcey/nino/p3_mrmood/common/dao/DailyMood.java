@@ -13,7 +13,7 @@ import org.threeten.bp.ZonedDateTime;
  */
 public class DailyMood extends RealmObject {
     
-    static final transient String NAME_KEY = "key";
+    static final transient String NAME_PRIMARY_KEY = "key";
     
     // Key is the day in the form "YYYYMMDD", since only one mood should be stored per day !
     @SuppressWarnings({"FieldCanBeLocal", "unused"})

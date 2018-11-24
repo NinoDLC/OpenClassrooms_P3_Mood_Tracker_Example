@@ -11,6 +11,9 @@ import fr.delcey.nino.p3_mrmood.common.Mood;
 import io.realm.Realm;
 import io.realm.RealmResults;
 import io.realm.Sort;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Random;
 import javax.annotation.Nullable;
 
@@ -79,21 +82,29 @@ public class DailyMoodDao {
     }
     
     @NonNull
-    public RealmResults<DailyMood> getLastSevenMoods() {
-        return Realm.getDefaultInstance()
-                    .where(DailyMood.class)
-                    .lessThan(DailyMood.NAME_KEY,
-                              DateUtils.getDateAsNumber(DateUtils.getNow()))
-                    .sort(DailyMood.NAME_KEY, Sort.DESCENDING)
-                    .limit(MAXIMUM_NUMBER_OF_MOOD_DISPLAYED_IN_HISTORY)
-                    .findAll();
+    public List<DailyMood> getLastSevenMoods() {
+        RealmResults<DailyMood> daoResults;
+        
+        daoResults = Realm.getDefaultInstance()
+                          .where(DailyMood.class)
+                          .lessThan(DailyMood.NAME_PRIMARY_KEY,
+                                    DateUtils.getDateAsNumber(DateUtils.getNow())) // Don't include today
+                          .sort(DailyMood.NAME_PRIMARY_KEY, Sort.DESCENDING) // Get most recent
+                          .limit(MAXIMUM_NUMBER_OF_MOOD_DISPLAYED_IN_HISTORY) // Get 7 most recent
+                          .findAll();
+        
+        List<DailyMood> results = new ArrayList<>(daoResults);
+        // Realm doesn't support multiple chain querying, see https://github.com/realm/realm-java/issues/6312
+        Collections.reverse(results);
+        
+        return results;
     }
     
     @Nullable
     public DailyMood getCurrentMood() {
         return Realm.getDefaultInstance()
                     .where(DailyMood.class)
-                    .equalTo(DailyMood.NAME_KEY,
+                    .equalTo(DailyMood.NAME_PRIMARY_KEY,
                              DateUtils.getDateAsNumber(DateUtils.getNow()))
                     .findFirst();
     }
