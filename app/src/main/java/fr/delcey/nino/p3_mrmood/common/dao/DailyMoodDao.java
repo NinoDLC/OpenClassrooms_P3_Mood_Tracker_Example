@@ -83,21 +83,16 @@ public class DailyMoodDao {
     
     @NonNull
     public List<DailyMood> getLastSevenMoods() {
-        RealmResults<DailyMood> daoResults;
-        
-        daoResults = Realm.getDefaultInstance()
+        return Realm.getDefaultInstance()
                           .where(DailyMood.class)
                           .lessThan(DailyMood.NAME_PRIMARY_KEY,
                                     DateUtils.getDateAsNumber(DateUtils.getNow())) // Don't include today
-                          .sort(DailyMood.NAME_PRIMARY_KEY, Sort.DESCENDING) // Get most recent
-                          .limit(MAXIMUM_NUMBER_OF_MOOD_DISPLAYED_IN_HISTORY) // Get 7 most recent
+                          .sort(DailyMood.NAME_PRIMARY_KEY, Sort.DESCENDING) // Get most recents
+                          .limit(MAXIMUM_NUMBER_OF_MOOD_DISPLAYED_IN_HISTORY) // Get 7 most recents
+                          .findAll() // To chain queries
+                          .where()
+                          .sort(DailyMood.NAME_PRIMARY_KEY) // Get 7 most recents starting from oldest one
                           .findAll();
-        
-        List<DailyMood> results = new ArrayList<>(daoResults);
-        // Realm doesn't support multiple chain querying, see https://github.com/realm/realm-java/issues/6312
-        Collections.reverse(results);
-        
-        return results;
     }
     
     @Nullable
