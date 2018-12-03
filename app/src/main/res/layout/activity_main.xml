@@ -36,6 +36,18 @@
         app:layout_constraintStart_toStartOf="parent"
         />
     <ImageButton
+        android:id="@+id/main_ibtn_share_mood"
+        style="@style/Widget.AppCompat.Button.Borderless"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:padding="@dimen/default_material"
+        android:contentDescription="@string/share_mood"
+        android:src="@drawable/ic_share"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        />
+    <ImageButton
         android:id="@+id/main_ibtn_history"
         style="@style/Widget.AppCompat.Button.Borderless"
         android:layout_width="wrap_content"

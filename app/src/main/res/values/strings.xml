@@ -8,4 +8,5 @@
     <string name="a_week_ago">Il y a une semaine</string>
     <string name="x_days_before" tools:ignore="PluralsCandidate">Il y a %d jours</string>
     <string name="hind_dialog_comment">Un commentaire sur ta journée ?</string>
+    <string name="share_mood">Partager son humeur</string>
 </resources>

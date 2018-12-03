@@ -1,5 +1,6 @@
 package fr.delcey.nino.p3_mrmood.main;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
@@ -70,6 +71,21 @@ public class MoodActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 startActivity(HistoryActivity.navigate(MoodActivity.this));
+            }
+        });
+        
+        // "Share mood" button
+        ImageButton shareMoodButton = findViewById(R.id.main_ibtn_share_mood);
+        shareMoodButton.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                DailyMood currentMood = DailyMoodDao.getInstance().getCurrentMood();
+                if (currentMood != null && currentMood.getComment() != null) {
+                    Intent intent = new Intent(Intent.ACTION_SEND);
+                    intent.putExtra(Intent.EXTRA_TEXT, currentMood.getComment());
+                    intent.setType("text/plain");
+                    startActivity(Intent.createChooser(intent, getString(R.string.share_mood)));
+                }
             }
         });
         
