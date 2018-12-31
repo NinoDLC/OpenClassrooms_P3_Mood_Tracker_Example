@@ -38,7 +38,7 @@ public class HistoryActivity extends AppCompatActivity implements Callback {
                 return true;
             }
         });
-        recyclerView.setAdapter(new HistoryAdapter(DailyMoodDao.getInstance().getLastSevenMoods(), this));
+        recyclerView.setAdapter(new HistoryAdapter(DailyMoodDao.getInstance().getLastSevenMoods(this), this));
     }
     
     @Override

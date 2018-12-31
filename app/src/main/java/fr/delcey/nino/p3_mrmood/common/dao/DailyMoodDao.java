@@ -1,29 +1,35 @@
 package fr.delcey.nino.p3_mrmood.common.dao;
 
-import static fr.delcey.nino.p3_mrmood.common.Consts.MAXIMUM_NUMBER_OF_MOOD_DISPLAYED_IN_HISTORY;
-
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.util.Log;
 import android.widget.Toast;
+import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
 import fr.delcey.nino.p3_mrmood.common.DateUtils;
 import fr.delcey.nino.p3_mrmood.common.Mood;
-import io.realm.Realm;
-import io.realm.RealmResults;
-import io.realm.Sort;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
-import javax.annotation.Nullable;
+import java.util.Set;
+import java.util.TreeSet;
+import org.threeten.bp.ZonedDateTime;
 
 /**
  * Store the daily mood of the user. Can store maximum one mood per day (if a second one is provided the same day,
- * the older one will be updated. {@link #setTodayComment(String)} is optionnal.
+ * the older one will be updated). {@link #upsertTodayComment(Context, String)} is optionnal.
  */
 public class DailyMoodDao {
     
     private static final String TAG = DailyMoodDao.class.getSimpleName();
+    
+    private static final String KEY_SHARED_PREFERENCE_NAME = "DAILY_MOOD_DAO";
+    
+    private final Gson mGson = new Gson();
     
     private static volatile DailyMoodDao sDailyMoodDao;
     
@@ -43,65 +49,98 @@ public class DailyMoodDao {
         return DailyMoodDao.sDailyMoodDao;
     }
     
-    public void setTodayMood(@NonNull Mood mood) {
-        Log.i(TAG, "setTodayMood() called with: " + "mood = [" + mood + "]");
+    private SharedPreferences getSharedPreferences(Context context) {
+        return context.getSharedPreferences(KEY_SHARED_PREFERENCE_NAME, Context.MODE_PRIVATE);
+    }
+    
+    private String getKey(ZonedDateTime zonedDateTime) {
+        return String.valueOf(DateUtils.getDateAsNumber(zonedDateTime));
+    }
+    
+    public void upsertTodayMood(Context context, @NonNull Mood mood) {
+        Log.i(TAG, "upsertTodayMood() called with: " + "mood = [" + mood + "]");
         
-        Realm.getDefaultInstance().beginTransaction();
-        
-        DailyMood currentMood = getCurrentMood();
+        DailyMood currentMood = getCurrentMood(context);
         
         if (currentMood == null) {
             currentMood = new DailyMood();
-            currentMood.setDate(DateUtils.getNow());
         }
         
         currentMood.setMood(mood);
-        Realm.getDefaultInstance().copyToRealmOrUpdate(currentMood);
         
-        Realm.getDefaultInstance().commitTransaction();
+        upsertMood(context, currentMood);
     }
     
-    public void setTodayComment(@Nullable String comment) {
-        Log.i(TAG, "setTodayComment() called with: " + "comment = [" + comment + "]");
+    public void upsertTodayComment(Context context, @Nullable String comment) {
+        Log.i(TAG, "upsertTodayComment() called with: " + "comment = [" + comment + "]");
         
-        Realm.getDefaultInstance().beginTransaction();
+        DailyMood currentMood = getCurrentMood(context);
         
-        DailyMood currentMood = getCurrentMood();
-        
-        // Should happen only in extreme cases (saving the mood around midnight)
+        // Should happen only in extreme cases (inserting a new comment around midnight)
         if (currentMood == null) {
             currentMood = new DailyMood();
-            currentMood.setDate(DateUtils.getNow());
-            currentMood.setMood(Mood.NEUTRAL);
         }
         
         currentMood.setComment(comment);
-        Realm.getDefaultInstance().copyToRealmOrUpdate(currentMood);
         
-        Realm.getDefaultInstance().commitTransaction();
+        upsertMood(context, currentMood);
+    }
+    
+    private void upsertMood(Context context, @NonNull DailyMood currentMood) {
+        getSharedPreferences(context).edit()
+                                     .putString(getKey(currentMood.getDate()), mGson.toJson(currentMood))
+                                     .apply();
     }
     
     @NonNull
-    public List<DailyMood> getLastSevenMoods() {
-        return Realm.getDefaultInstance()
-                          .where(DailyMood.class)
-                          .lessThan(DailyMood.NAME_PRIMARY_KEY,
-                                    DateUtils.getDateAsNumber(DateUtils.getNow())) // Don't include today
-                          .sort(DailyMood.NAME_PRIMARY_KEY, Sort.DESCENDING) // Get most recents
-                          .limit(MAXIMUM_NUMBER_OF_MOOD_DISPLAYED_IN_HISTORY) // Get 7 most recents
-                          .findAll() // To chain queries
-                          .where()
-                          .sort(DailyMood.NAME_PRIMARY_KEY) // Get 7 most recents starting from oldest one
-                          .findAll();
+    public List<DailyMood> getLastSevenMoods(Context context) {
+        // SharePreferences.getAll() return a map, which doesn't garantee the insertion order
+        // and iteration order is respected. It's time for some algotrithm.
+        Map<String, ?> map = getSharedPreferences(context).getAll();
+        
+        Set<DailyMood> allDailyMoodsSorted = new TreeSet<>(new Comparator<DailyMood>() {
+            @Override
+            public int compare(DailyMood o1, DailyMood o2) {
+                return o1.getDate().compareTo(o2.getDate());
+            }
+        });
+        
+        // TODO OMG FIX THIS ABOMINATION AND OPTIMIZE IT (WITH SMART SUBCLASS OF TREESET ORDERING ONLY 7 ELEMENTS ?)
+        for (Object serializedDailyMood : map.values()) {
+            if (serializedDailyMood instanceof String) {
+                try {
+                    DailyMood dailyMood = mGson.fromJson((String) serializedDailyMood, DailyMood.class);
+                    allDailyMoodsSorted.add(dailyMood);
+                } catch (JsonSyntaxException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        
+        List<DailyMood> first7Results = new ArrayList<>(7);
+        int i = 0;
+        for (DailyMood dailyMood : allDailyMoodsSorted) {
+            if (i < 7) {
+                i++;
+            } else {
+                break;
+            }
+            
+            first7Results.add(dailyMood);
+        }
+        
+        return first7Results;
     }
     
     @Nullable
-    public DailyMood getCurrentMood() {
-        return Realm.getDefaultInstance()
-                    .where(DailyMood.class)
-                    .equalTo(DailyMood.NAME_PRIMARY_KEY,
-                             DateUtils.getDateAsNumber(DateUtils.getNow()))
-                    .findFirst();
+    public DailyMood getCurrentMood(Context context) {
+        String serializedDailyMood = getSharedPreferences(context).getString(getKey(DateUtils.getNow()), null);
+        
+        if (serializedDailyMood == null) {
+            return null;
+        }
+        
+        return mGson.fromJson(serializedDailyMood, DailyMood.class);
     }
     
     // region debug
@@ -116,12 +155,10 @@ public class DailyMoodDao {
         + "tristique magna sit amet purus gravida quis. Porta nibh venenatis cras sed felis eget velit aliquet. Eu "
         + "sem integer vitae justo eget magna fermentum. Neque vitae tempus quam pellentesque nec nam aliquam sem.";
     
+    // Insert 7 moods if database is empty
     public void injectMockData(Context context) {
-        DailyMood dailyMood = Realm.getDefaultInstance().where(DailyMood.class).findFirst();
         
-        if (dailyMood == null) {
-            Realm.getDefaultInstance().beginTransaction();
-            
+        if (getSharedPreferences(context).getAll().isEmpty()) {
             Random random = new Random();
             
             for (int i = 0, total = 0; total < 7; i++) {
@@ -141,18 +178,17 @@ public class DailyMoodDao {
                     mockedMood.setDate(DateUtils.getNow()
                                                 .minusDays(i + 1)
                                                 .withHour(random.nextInt(24))
-                                                .withMinute(random.nextInt(60)));
+                                                .withMinute(random.nextInt(60))
+                                                .toString());
                     
                     Log.v(TAG, "injectMockData() called, injecting mockedMood = [" + mockedMood + "]");
                     
-                    Realm.getDefaultInstance().copyToRealmOrUpdate(mockedMood);
+                    upsertMood(context, mockedMood);
                 }
             }
             
             Log.i(TAG, "injectMockData() called !");
             Toast.makeText(context, "injectMockData() called !", Toast.LENGTH_SHORT).show();
-            
-            Realm.getDefaultInstance().commitTransaction();
         }
     }
     

@@ -73,7 +73,7 @@ public class MoodActivity extends AppCompatActivity {
         shareMoodButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
-                DailyMood currentMood = DailyMoodDao.getInstance().getCurrentMood();
+                DailyMood currentMood = DailyMoodDao.getInstance().getCurrentMood(view.getContext());
                 if (currentMood != null && currentMood.getComment() != null) {
                     Intent intent = new Intent(Intent.ACTION_SEND);
                     intent.putExtra(Intent.EXTRA_TEXT, currentMood.getComment());
@@ -131,7 +131,7 @@ public class MoodActivity extends AppCompatActivity {
             int currentMoodIndex = mScrolledY / mRecyclerviewHeight;
             Mood currentMood = Mood.values()[currentMoodIndex];
             
-            DailyMoodDao.getInstance().setTodayMood(currentMood);
+            DailyMoodDao.getInstance().upsertTodayMood(this, currentMood);
         }
     }
     
@@ -147,7 +147,7 @@ public class MoodActivity extends AppCompatActivity {
     private int computeInitialPosition() {
         int initialPosition;
         
-        DailyMood currentMood = DailyMoodDao.getInstance().getCurrentMood();
+        DailyMood currentMood = DailyMoodDao.getInstance().getCurrentMood(this);
         
         if (currentMood == null) {
             // Initialize recyclerview to "neutral" mood the first time the activity is launched from scratch this day

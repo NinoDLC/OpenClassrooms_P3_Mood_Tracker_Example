@@ -29,7 +29,7 @@ public class MoodCommentDialog extends DialogFragment {
         View view = getActivity().getLayoutInflater().inflate(R.layout.dialog_add_comment, null);
         final EditText editText = view.findViewById(R.id.dialog_comment_et);
         
-        DailyMood currentMood = DailyMoodDao.getInstance().getCurrentMood();
+        DailyMood currentMood = DailyMoodDao.getInstance().getCurrentMood(getContext());
         
         if (currentMood != null) {
             editText.setText(currentMood.getComment());
@@ -38,7 +38,8 @@ public class MoodCommentDialog extends DialogFragment {
         builder.setView(view)
                .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
                    public void onClick(DialogInterface dialog, int id) {
-                       DailyMoodDao.getInstance().setTodayComment(editText.getText().toString());
+                       DailyMoodDao.getInstance()
+                                   .upsertTodayComment(editText.getContext(), editText.getText().toString());
                    }
                })
                .setNegativeButton(android.R.string.cancel, null);

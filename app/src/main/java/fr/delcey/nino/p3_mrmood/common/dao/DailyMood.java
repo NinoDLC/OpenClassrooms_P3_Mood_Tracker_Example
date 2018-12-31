@@ -1,28 +1,29 @@
 package fr.delcey.nino.p3_mrmood.common.dao;
 
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import fr.delcey.nino.p3_mrmood.common.DateUtils;
 import fr.delcey.nino.p3_mrmood.common.Mood;
-import io.realm.RealmObject;
-import io.realm.annotations.PrimaryKey;
-import javax.annotation.Nullable;
 import org.threeten.bp.ZonedDateTime;
 
 /**
  * POJO to store the mood the user felt on a specific day ; the comment is optional
  */
-public class DailyMood extends RealmObject {
+public class DailyMood {
     
-    static final transient String NAME_PRIMARY_KEY = "key";
-    
-    // Key is the day in the form "YYYYMMDD", since only one mood should be stored per day !
-    @SuppressWarnings({"FieldCanBeLocal", "unused"})
-    @PrimaryKey
-    private int key;
-    
+    @NonNull
     private String mood;
+    
+    @NonNull
     private String date;
+    
+    @Nullable
     private String comment;
+    
+    DailyMood() {
+        mood = Mood.NEUTRAL.name();
+        date = DateUtils.getNow().toString();
+    }
     
     @NonNull
     public Mood getMood() {
@@ -38,9 +39,8 @@ public class DailyMood extends RealmObject {
         return ZonedDateTime.parse(date);
     }
     
-    void setDate(@NonNull ZonedDateTime zonedDateTime) {
-        key = DateUtils.getDateAsNumber(zonedDateTime);
-        date = zonedDateTime.toString();
+    public void setDate(@NonNull String date) {
+        this.date = date;
     }
     
     @Nullable
@@ -56,7 +56,6 @@ public class DailyMood extends RealmObject {
     @Override
     public String toString() {
         return "DailyMood{" +
-            "key=" + key +
             ", mood='" + mood + '\'' +
             ", date='" + date + '\'' +
             ", comment='" + comment + '\'' +
