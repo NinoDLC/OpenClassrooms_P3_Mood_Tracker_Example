@@ -2,8 +2,6 @@ package fr.delcey.nino.p3_mrmood.common;
 
 import android.support.annotation.NonNull;
 import org.threeten.bp.ZonedDateTime;
-import org.threeten.bp.temporal.ChronoUnit;
-import org.threeten.bp.temporal.Temporal;
 
 public class DateUtils {
     
@@ -15,17 +13,6 @@ public class DateUtils {
         return zonedDateTime.getDayOfMonth() +
             zonedDateTime.getMonth().getValue() * 100 +
             zonedDateTime.getYear() * 100_00;
-    }
-    
-    /**
-     * Usefull only to compare two dates with {@link ChronoUnit#between(Temporal, Temporal)}.
-     */
-    @NonNull
-    public static ZonedDateTime getLastInstantOfToday() {
-        return getNow().withHour(23)
-                       .withMinute(59)
-                       .withSecond(59)
-                       .withNano(999);
     }
     
     /**

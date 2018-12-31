@@ -17,7 +17,7 @@ class HistoryBusinessService {
         // Example : between Tuesday 10 am and Wednesday 8 pm, there's only "1 day" of difference, but since the
         // delta in hours is more than 24 hours, it would return "2 days".
         // DateUtils.getLastInstantOfToday() fixes this.
-        int daysBetween = (int) ChronoUnit.DAYS.between(date, DateUtils.getLastInstantOfToday());
+        int daysBetween = (int) ChronoUnit.DAYS.between(date.toLocalDate(), DateUtils.getNow().toLocalDate());
         
         switch (daysBetween) {
             case 0:

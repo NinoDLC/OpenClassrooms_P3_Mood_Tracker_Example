@@ -20,7 +20,6 @@ import fr.delcey.nino.p3_mrmood.common.DateUtils;
 import fr.delcey.nino.p3_mrmood.common.Mood;
 import fr.delcey.nino.p3_mrmood.common.dao.DailyMood;
 import fr.delcey.nino.p3_mrmood.common.dao.DailyMoodDao;
-import fr.delcey.nino.p3_mrmood.common.shared_preferences.LastTimeUsedSharedPreferences;
 import fr.delcey.nino.p3_mrmood.history.HistoryActivity;
 
 /**
@@ -33,9 +32,6 @@ import fr.delcey.nino.p3_mrmood.history.HistoryActivity;
  */
 public class MoodActivity extends AppCompatActivity {
     
-    // Key used in the onSaveInstanceState bundle to know which mood was selected
-    private static final String SAVE_STATE_SELECTED_MOOD = "SAVE_STATE_SELECTED_MOOD";
-    
     private RecyclerView mRecycleview;
     private LottieAnimationView mLottieAnimationView;
     
@@ -43,8 +39,6 @@ public class MoodActivity extends AppCompatActivity {
     private int mScrolledY;
     
     private final int mMoodCount = Mood.values().length - 1; // Optimization : calculated only once
-    
-    private int mInitialPosition;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,7 +55,7 @@ public class MoodActivity extends AppCompatActivity {
         addCommentButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
-                onAddCommentButtonClicked();
+                new MoodCommentDialog().show(getSupportFragmentManager(), null);
             }
         });
         
@@ -96,67 +90,14 @@ public class MoodActivity extends AppCompatActivity {
         snapHelper.attachToRecyclerView(mRecycleview);
         mRecycleview.setAdapter(new MoodAdapter());
         
-        final int initialPosition;
-        
-        if (savedInstanceState != null && savedInstanceState.containsKey(SAVE_STATE_SELECTED_MOOD)) {
-            // Activity is being recreated from a previous state : restore it
-            initialPosition = savedInstanceState.getInt(SAVE_STATE_SELECTED_MOOD);
-        } else {
-            DailyMood currentMood = DailyMoodDao.getInstance().getCurrentMood();
-            
-            if (currentMood == null) {
-                // Just initialize recyclerview to "neutral" mood the first time the activity is launched
-                initialPosition = getRecyclerViewDefaultInitialPosition();
-            } else {
-                initialPosition = currentMood.getMood().ordinal();
-            }
-        }
-        
         addScrollListenerToRecyclerView();
-        
-        initRecyclerViewPosition(initialPosition);
     }
     
     @Override
     protected void onResume() {
         super.onResume();
         
-        int lastTimeUsed = new LastTimeUsedSharedPreferences(this).getLastTimeUsed();
-        
-        if (DateUtils.getDateAsNumber(DateUtils.getNow()) != lastTimeUsed) {
-            initRecyclerViewPosition(getRecyclerViewDefaultInitialPosition());
-        }
-    }
-    
-    @Override
-    protected void onPause() {
-        super.onPause();
-        
-        new LastTimeUsedSharedPreferences(this)
-            .setLastTimeUsed(DateUtils.getDateAsNumber(DateUtils.getNow()));
-    }
-    
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        
-        if (mRecycleview.getLayoutManager() != null) {
-            int actualPosition =
-                ((LinearLayoutManager) mRecycleview.getLayoutManager()).findFirstCompletelyVisibleItemPosition();
-            
-            if (actualPosition == RecyclerView.NO_POSITION) {
-                // User is actually scrolling and activity is saving... unusual but OK.
-                actualPosition = ((LinearLayoutManager) mRecycleview.getLayoutManager()).findFirstVisibleItemPosition();
-            }
-            
-            if (actualPosition != RecyclerView.NO_POSITION) {
-                outState.putInt(SAVE_STATE_SELECTED_MOOD, actualPosition);
-            }
-        }
-    }
-    
-    private void onAddCommentButtonClicked() {
-        new MoodCommentDialog().show(getSupportFragmentManager(), null);
+        initRecyclerViewPosition();
     }
     
     private void addScrollListenerToRecyclerView() {
@@ -184,8 +125,8 @@ public class MoodActivity extends AppCompatActivity {
     }
     
     private void saveCurrentMood() {
-        // SnapHelper makes some weird bug with imprecise [-1 or +1] dy with onScrolled method, so wait for the
-        // RecyclerView to be truely stabilized to save the mood
+        // SnapHelper makes some weird bug with imprecise [-1 or +1] dy with onScrolled method,
+        // so wait for the RecyclerView to be truely stabilized to save the mood
         if (mScrolledY % mRecyclerviewHeight == 0) {
             int currentMoodIndex = mScrolledY / mRecyclerviewHeight;
             Mood currentMood = Mood.values()[currentMoodIndex];
@@ -194,24 +135,42 @@ public class MoodActivity extends AppCompatActivity {
         }
     }
     
+    private void initRecyclerViewPosition() {
+        int initialPositionForToday = computeInitialPosition();
+        
+        // Restore the good color of the RecyclerView
+        setRecyclerViewInitialPosition(initialPositionForToday);
+        
+        computeRecyclerviewHeightAndInitialScroll(initialPositionForToday);
+    }
+    
+    private int computeInitialPosition() {
+        int initialPosition;
+        
+        DailyMood currentMood = DailyMoodDao.getInstance().getCurrentMood();
+        
+        if (currentMood == null) {
+            // Initialize recyclerview to "neutral" mood the first time the activity is launched from scratch this day
+            initialPosition = getRecyclerViewDefaultInitialPosition();
+        } else if (!currentMood.getDate().toLocalDate().equals(DateUtils.getNow().toLocalDate())) {
+            // Activity is re-created from memory another day : reinitialize it
+            initialPosition = getRecyclerViewDefaultInitialPosition();
+        } else {
+            initialPosition = currentMood.getMood().ordinal();
+        }
+        
+        return initialPosition;
+    }
+    
     private int getRecyclerViewDefaultInitialPosition() {
         return (mMoodCount + 1) / 2;
     }
     
-    private void initRecyclerViewPosition(int initialPosition) {
-        // Restore the good color of the RecyclerView
-        setRecyclerViewInitialPosition(initialPosition);
-        
-        computeRecyclerviewHeightAndInitialScroll();
-    }
-    
     private void setRecyclerViewInitialPosition(int initialPosition) {
-        mInitialPosition = initialPosition;
-        
         mRecycleview.scrollToPosition(initialPosition);
     }
     
-    private void computeRecyclerviewHeightAndInitialScroll() {
+    private void computeRecyclerviewHeightAndInitialScroll(final int initialPosition) {
         // Since ViewHolders have MATCH_PARENT params, ViewHolder height == Recyclerview height
         mRecycleview.getViewTreeObserver().addOnGlobalLayoutListener(new OnGlobalLayoutListener() {
             // onGlobalLayout event is trigger the first time the View is actually fully measured and laid out. This
@@ -223,14 +182,16 @@ public class MoodActivity extends AppCompatActivity {
                 
                 mRecyclerviewHeight = mRecycleview.getHeight();
                 
-                updateInitialScrollY(mInitialPosition);
+                updateInitialScrollY(initialPosition);
+                
+                saveCurrentMood();
             }
         });
     }
     
     private void updateInitialScrollY(int initialPosition) {
-        // OnScrollListener.onScrolled is not called when we use scrollToPosition so have to initialize the
-        // mScrolledY value by ourselves
+        // OnScrollListener.onScrolled is not called when we use scrollToPosition
+        // so we have to initialize the mScrolledY value by ourselves
         mScrolledY = mRecyclerviewHeight * initialPosition;
         
         // Initialize animation to current recyclerview item
